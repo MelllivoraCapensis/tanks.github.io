@@ -1,0 +1,40 @@
+
+#field {
+	position: relative;
+	width: 80%;
+	height: 400px;
+	margin: 20px auto;
+	border: 2px solid black;
+	overflow: hidden;
+}
+.tank {
+	position: absolute;
+	background: url(/img/tank.png) no-repeat;
+    background-size: 100% 100%;
+	border-radius: 10%;
+}
+#result {
+	width: 150px;
+	height: 30px;
+	border: 2px solid black;
+}
+.bullet {
+	position: absolute;
+	border-radius: 100%;
+	background: green;
+}
+.tankTurret {
+	position: absolute;
+	border-radius: 20%;
+	background: url('/img/turret.png') no-repeat;
+	background-size: 100% 100%;
+	transform-origin: 50%;
+}
+.tankGun {
+	position: absolute;
+	border: 1px solid black;
+}
+.tankBarrel {
+	position: absolute;
+	background: #435445;
+}
