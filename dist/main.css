@@ -10,7 +10,7 @@
 .tank {
 	position: absolute;
 	background: url(/img/tank.png) no-repeat;
-    background-size: cover;
+    background-size: 100% 100%;
 	border-radius: 10%;
 }
 #result {
@@ -25,11 +25,9 @@
 }
 .tankTurret {
 	position: absolute;
-	width: 30px;
-	height: 40px;
 	border-radius: 20%;
 	background: url('/img/turret.png') no-repeat;
-	background-size: cover;
+	background-size: 100% 100%;
 	transform-origin: 50%;
 }
 .tankGun {
