@@ -1,5 +1,7 @@
+/*eslint-disable*/
 export default class TankGun {
-  constructor(tank, barrelDirection) {
+  constructor(tank, relGunDirection) {
+    //params
     this.tank = tank;
     this.barrel = {
         	size: {
@@ -13,23 +15,25 @@ export default class TankGun {
         	   height: 50,
         	},
     };
-    this.direction = barrelDirection;
+    //state
+    this.direction = relGunDirection;
+    //initial method
     this.createTankGunDom();
   }
 
   set directionSetter(value) {
     this.direction = value;
-    this.rotateTurrent();
+    this.rotateTurret();
   }
 
-  rotateTurrent() {
+  rotateTurret() {
     this.turretDom.style.transform = `rotate(${
       -this.direction * 180 / Math.PI + 90}deg)`;
   }
 
   createTankGunDom() {
     this.turretDom = document.createElement('div');
-    this.tank.tankDom.appendChild(this.turretDom);
+    this.tank.dom.appendChild(this.turretDom);
     this.turretDom.classList.add('tankTurret');
     this.turretDom.style.width = `${this.turret.size.width}px`;
     this.turretDom.style.height = `${this.turret.size.height}px`;
@@ -37,7 +41,7 @@ export default class TankGun {
         	- this.turret.size.height) / 2}px`;
     this.turretDom.style.left = `${(this.tank.size.width
         	- this.turret.size.width) / 2}px`;
-    this.rotateTurrent();
+    this.rotateTurret();
 
     this.barrelDom = document.createElement('div');
     this.turretDom.appendChild(this.barrelDom);

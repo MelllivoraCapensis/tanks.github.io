@@ -1,76 +1,111 @@
-import SoundMaker from './soundMaker';
+import Sound from './soundMaker';
 
-export default class BulletMaker {
-  constructor(bulletWidth, field, left, top, gunDirection, tankSpeed) {
-    this.animTimeStep = 10;
-    this.relSpeed = 800;
+export default class Bullet {
+  constructor(bulletWidth, world, field, left, top, absDirection, tankSpeed) {
+    // params
+    this.relSpeed = 500;
     this.tankSpeed = tankSpeed;
-    this.gunDirection = gunDirection;
+    this.direction = absDirection;
     this.size = {
       width: bulletWidth,
       height: 5,
     };
+    this.field = field;
+    this.world = world;
 
-    this.bulletSound = new SoundMaker('./audio/bullet02_shot.wav');
-    this.bulletSound.volumeSetter = 0.5;
-    this.bulletSound.play();
-    this.createBulletDom(left, top);
-    this.moveBullet();
+    // state, initial value
+    this.left = left;
+    this.top = top;
+
+    // initial methods
+    this.sound = new Sound('./audio/bullet02_shot.wav');
+    this.sound.volumeSetter = 0.5;
+    this.sound.play();
+
+    this.createDom();
+    this.move();
+  }
+
+  get cell() {
+    let leftInWorld = this.world.hidden.left + this.left;
+    let topInWorld = this.world.hidden.top + this.top;
+    let i = Math.max(0, Math.min(this.world.sizeInCells.width - 1,
+      Math.floor(leftInWorld / this.world.cellSize.width)));
+    let j = Math.max(0, Math.min(this.world.sizeInCells.height - 1,
+      Math.floor(topInWorld / this.world.cellSize.height)));
+    return this.world.cells[i][j];
   }
 
   get fullSpeed() {
     return {
-      toRight: this.relSpeed * Math.cos(this.gunDirection),
-      toBottom: -this.relSpeed * Math.sin(this.gunDirection),
+      toRight: this.relSpeed * Math.cos(this.direction),
+      toBottom: -this.relSpeed * Math.sin(this.direction),
     };
   }
 
   set leftSetter(value) {
-    this.left = value;
-    this.placeBulletDom();
+    this.left = Math.max(0, Math.min(this.field.size.width, value));
+    this.placeInDom();
   }
 
   set topSetter(value) {
-    this.top = value;
-    this.placeBulletDom();
+    this.top = Math.max(0, Math.min(this.field.size.height, value));
+    this.placeInDom();
   }
 
-  moveBullet() {
+  move() {
     let start = null;
     const leftStart = this.left;
     const topStart = this.top;
     const step = (timeStamp) => {
+      if (!this.isEndOfPath()) {
+        window.requestAnimationFrame(step);
+      } else {
+        this.deleteFromDom();
+      }
       if (!start) {
         start = timeStamp;
       }
       const progress = timeStamp - start;
-      this.leftSetter = leftStart + this.fullSpeed.toRight
-		* progress / 1000;
-      this.topSetter = topStart + this.fullSpeed.toBottom
-		* progress / 1000;
-      if (this.left < field.clientWidth
-			&& this.left > -this.size.width
-			&& this.top < field.clientHeight
-			&& this.top > -this.size.height) { window.requestAnimationFrame(step); } else {
-        field.removeChild(this.bulletDom);
-      }
-    };
+      this.leftSetter = leftStart + this.fullSpeed.toRight * progress / 1000;
+      this.topSetter = topStart + this.fullSpeed.toBottom * progress / 1000;
+   };
     window.requestAnimationFrame(step);
   }
 
-  placeBulletDom() {
-    this.bulletDom.style.left = `${this.left}px`;
-    this.bulletDom.style.top = `${this.top}px`;
+  isEndOfPath() {
+    console.log((this.field.size.width + this.world.hidden.left)/
+      this.world.cellSize.width)
+    return this.left >= this.field.size.width
+      || this.left <= 0
+      || this.top >= this.field.size.height
+      || this.top <= 0
+      || this.cell.object !== null;
   }
 
-  createBulletDom(left, top) {
-    this.bulletDom = document.createElement('div');
-    this.bulletDom.classList.add('bullet');
-    this.bulletDom.style.width = `${this.size.width}px`;
-    this.bulletDom.style.height = `${this.size.height}px`;
-    field.appendChild(this.bulletDom);
-    this.leftSetter = left;
-    this.topSetter = top;
-    this.placeBulletDom();
+  deleteFromDom() {
+    if(this.cell !== undefined)
+    if(this.cell.object !== null)
+    {
+      this.cell.object.resourceSetter = this.cell.object.resource -1;
+    }
+    this.field.dom.removeChild(this.dom);
+    setTimeout(() => {
+    this.sound.deleteFromDom();
+  }, 1000)
+  }
+
+  placeInDom() {
+    this.dom.style.left = `${this.left}px`;
+    this.dom.style.top = `${this.top}px`;
+  }
+
+  createDom() {
+    this.dom = document.createElement('div');
+    this.dom.classList.add('bullet');
+    this.dom.style.width = `${this.size.width}px`;
+    this.dom.style.height = `${this.size.height}px`;
+    this.field.dom.appendChild(this.dom);
+    this.placeInDom();
   }
 }

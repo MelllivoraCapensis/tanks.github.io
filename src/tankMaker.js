@@ -1,7 +1,7 @@
-/* eslint disable */
-import BulletMaker from './bulletMaker';
+/* eslint-disable */
+import Bullet from './bulletMaker';
 import TankGun from './tankGun';
-import SoundMaker from './soundMaker';
+import Sound from './soundMaker';
 
 const delFromArray = (array, elemToDel) => {
   const ind = array.indexOf(elemToDel);
@@ -14,10 +14,22 @@ const addUniqToArray = (array, elemToAdd) => {
   array.push(elemToAdd);
 };
 
-const isFightKeyCode = keyCode => (keyCode === 'KeyA' || keyCode === 'KeyW' || keyCode === 'KeyD');
-const isMoveKeyCode = keyCode => (keyCode === 'ArrowLeft' || keyCode === 'ArrowRight'
-    || keyCode === 'ArrowUp' || keyCode === 'ArrowDown');
+const shiftElemsOfArray = (array, shiftDelta) => {
+  return array.map((elem, ind, array) => {
+         return array[(ind - shiftDelta + array.length) % array.length]
+  })
+}
 
+const createObjectFromArrays = (arrayKeys, arrayValues) => {
+  return Object.assign(...arrayKeys.map((elem, i, arr) => {
+       let obj = {};
+       obj[elem] = arrayValues[i];
+       return obj;
+  }))
+}
+
+const isFightKeyCode = keyCode => keyCode === 'KeyW';
+const isTurretKeyCode = keyCode => keyCode === 'KeyA' || keyCode === 'KeyD';
 const getCoords = (domElem) => {
   const rect = domElem.getBoundingClientRect();
   return {
@@ -25,51 +37,89 @@ const getCoords = (domElem) => {
     top: rect.y,
   };
 };
-
-export default class TankMaker {
-  constructor(field, left, top) {
+export default class Tank {
+  constructor(world, field, leftInWorld, topInWorld) {
     this.animTimeStep = 10;
-    this.fireRate = 10;
+    this.fireRate = 5;
     this.speed = {
-      linear: 120,
+      linear: 200,
       radial: 1,
     };
+    this.world = world;
     this.field = field;
     this.bulletWidth = 5;
-    this.gunRotateStep = 0.05;
+    this.gunRotateStep = 0.005;
     this.size = {
       width: 70,
       height: 100,
     };
-
-    this.left = left;
-    this.top = top;
+    this.minDistToEdge = {
+      horizontal: 400,
+      vertical: 400
+    }
+    
+    //state
+    this.left = leftInWorld;
+    this.top = topInWorld;
     this.keyCodes = {
       move: [],
+      turn: [],
       fight: [],
+      turret: []
     };
     this.direction = Math.PI / 2;
-    this.moveSound = new SoundMaker('./audio/tankMove.mp3', true);
-    this.turretSound = new SoundMaker('./audio/turretMove.mp3', true);
-    this.turretSound.volumeSetter = 1;
-    this.createTankDom();
+    
+    //initial methods
+    this.createDom();
 	  this.addManipulation();
     this.tankGun = new TankGun(this, Math.PI / 2);
   }
 
   set moveSoundSetter(value) {
-    if (value === 'stop') this.moveSound.stop();
-    if (value === 'play') this.moveSound.play();
+    if (value === 'stop') this.sound.move.stop();
+    if (value === 'play') this.sound.move.play();
   }
 
   set turretSoundSetter(value) {
-    if (value === 'stop') this.turretSound.stop();
-    if (value === 'play') this.turretSound.play();
+    if (value === 'stop') this.sound.turretTurn.stop();
+    if (value === 'play') this.sound.turretTurn.play();
   }
 
   set directionSetter(value) {
-    this.direction = value;
-    this.placeTankDom();
+    this.direction = value % (2 * Math.PI);
+    this.placeDom();
+  }
+
+  get arrowHandlers() {
+
+      let object =  {
+          ArrowUp: () => {
+        this.topSetter = this.top + this.currentSpeed.toBottom 
+           * this.animTimeStep / 1000;
+        this.leftSetter = this.left + this.currentSpeed.toRight 
+          * this.animTimeStep / 1000;
+       },
+        ArrowLeft: () => {
+        this.directionSetter =this.direction + this.animTimeStep
+              * this.currentSpeed.radial / 1000;
+       },   
+
+      ArrowDown: () => {
+        this.topSetter = this.top + this.currentSpeed.toBottom 
+          * this.animTimeStep / 1000;
+        this.leftSetter = this.left + this.currentSpeed.toRight 
+          * this.animTimeStep / 1000;
+      },     
+      ArrowRight: () => {
+        this.directionSetter = this.direction - this.animTimeStep
+              * this.currentSpeed.radial / 1000;
+       }
+    
+    }
+    //let deltaShift = - Math.floor((this.direction - Math.PI / 4) / (Math.PI / 2));
+   // let newObject = createObjectFromArrays(arr, Object.values(object));
+   // console.log(newObject);
+    return object;
   }
 
   get endOfBarrel() {
@@ -87,59 +137,148 @@ export default class TankMaker {
   }
 
   get currentSpeed() {
-    const up = this.keyCodes.move.indexOf('ArrowUp') >= 0;
-    const down = this.keyCodes.move.indexOf('ArrowDown') >= 0;
+    const up = this.keyCodes.move.indexOf(Object.keys(this.arrowHandlers)[0]) >= 0;
+    const down = this.keyCodes.move.indexOf(Object.keys(this.arrowHandlers)[2]) >= 0;
     const linear = up - down;
     return {
         	toRight: linear * this.speed.linear * Math.cos(this.direction),
         	toBottom: -linear * this.speed.linear * Math.sin(this.direction),
-      radial: linear * this.speed.radial,
+      radial: this.speed.radial * linear,
     };
   }
 
-  get fieldBounds() {
+  /*get fieldBounds() {
     return {
       left: getCoords(this.field).left,
       right: getCoords(this.field).left + this.field.offsetWidth,
       top: getCoords(this.field).top,
       bottom: getCoords(this.field).top + this.field.offsetHeight,
     };
-  }
+  }*/
 
   set leftSetter(value) {
-    this.left = value;
-    this.placeTankDom();
+    this.left = Math.max(this.size.height / 2, Math.min(this.world.size.width - 
+      this.size.height / 2,value));
+    this.placeDom();
+    this.moveWorld();
   }
 
   set topSetter(value) {
-    this.top = value;
-    this.placeTankDom();
+    this.top = Math.max(this.size.height / 2, Math.min(this.world.size.height -
+      this.size.height / 2, value));
+    this.placeDom();
+    this.moveWorld();
+  }
+  
+  get distToEdge () {
+    return {
+      left: this.left - this.world.hidden.left,
+      top: this.top - this.world.hidden.top,
+      right: this.world.hidden.left + this.field.dom.clientWidth - this.left,
+      bottom: this.world.hidden.top + this.field.dom.clientHeight - this.top
+    }
+  }
+  isMoveKeyCode(keyCode) {
+    return keyCode === Object.keys(this.arrowHandlers)[0] ||
+     keyCode === Object.keys(this.arrowHandlers)[2];
+  }  
+  isTurnKeyCode(keyCode) {
+    return keyCode === Object.keys(this.arrowHandlers)[1] ||
+     keyCode === Object.keys(this.arrowHandlers)[3];
+   }
+   moveWorld() {
+      if(this.distToEdge.left <= this.minDistToEdge.horizontal && 
+        this.currentSpeed.toRight < 0)
+      this.world.hiddenLeftSetter = this.world.hidden.left + 
+        this.currentSpeed.toRight * this.animTimeStep / 1000;
+      if(this.distToEdge.right <= this.minDistToEdge.horizontal && 
+        this.currentSpeed.toRight > 0)
+      this.world.hiddenLeftSetter = this.world.hidden.left + 
+        this.currentSpeed.toRight * this.animTimeStep / 1000;
+      if(this.distToEdge.top <= this.minDistToEdge.vertical && 
+        this.currentSpeed.toBottom < 0)
+      this.world.hiddenTopSetter = this.world.hidden.top + 
+        this.currentSpeed.toBottom * this.animTimeStep / 1000;
+      if(this.distToEdge.bottom <= this.minDistToEdge.vertical && 
+        this.currentSpeed.toBottom > 0)
+       this.world.hiddenTopSetter = this.world.hidden.top + 
+        this.currentSpeed.toBottom * this.animTimeStep / 1000;
   }
 
-  placeTankDom() {
-    this.tankDom.style.left = `${this.left - this.size.width / 2}px`;
-    this.tankDom.style.top = `${this.top - this.size.height / 2}px`;
-    this.tankDom.style.transform = `rotate(${90 - this.direction * 180 / Math.PI
+  placeDom() {
+    this.dom.style.left = `${this.left - this.size.width / 2}px`;
+    this.dom.style.top = `${this.top - this.size.height / 2}px`;
+    this.dom.style.transform = `rotate(${90 - this.direction * 180 / Math.PI
     }deg)`;
   }
 
-  createTankDom(left, top) {
-    this.tankDom = document.createElement('div');
-    this.tankDom.classList.add('tank');
-    this.tankDom.style.width = `${this.size.width}px`;
-    this.tankDom.style.height = `${this.size.height}px`;
-    field.appendChild(this.tankDom);
-    this.placeTankDom();
+  createDom(left, top) {
+    this.dom = document.createElement('div');
+    this.dom.classList.add('tank');
+    this.dom.style.width = `${this.size.width}px`;
+    this.dom.style.height = `${this.size.height}px`;
+    this.world.dom.appendChild(this.dom);
+    this.placeDom();
+    this.sound = {
+      move: new Sound('./audio/tankMove.mp3', true),
+      turretTurn: new Sound('./audio/turretMove.mp3', true)
+    }
   }
 
-  moveTank() {
+  move() {
+    this.sound.move.play();
     const timerId = setInterval(() => {
       if (this.keyCodes.move.length === 0) {
         clearInterval(timerId);
+        this.sound.move.stop();
         return;
       }
       this.keyCodes.move.forEach((keyCode) => {
            	this.handleKey(keyCode);
+      });
+       }, this.animTimeStep);
+  }
+
+fight() {
+    let countTime = 0;
+    let countBullet = 0;
+    const timerId = setInterval(() => {
+      if (this.keyCodes.fight.length === 0) {
+        clearInterval(timerId);
+        return;
+      }
+      this.keyCodes.fight.forEach((keyCode) => {
+              if(Math.floor(countTime / 1000 * this.fireRate === countBullet))
+              {
+              this.handleKey(keyCode);
+              countBullet ++;
+              }
+      });
+      countTime += this.animTimeStep;
+    }, this.animTimeStep);
+  }
+
+  turn() {
+     const timerId = setInterval(() => {
+      if (this.keyCodes.turn.length === 0) {
+        clearInterval(timerId);
+        return;
+      }
+      this.keyCodes.turn.forEach((keyCode) => {
+            this.handleKey(keyCode);
+      });
+    }, this.animTimeStep);
+  }
+  turretTurn() {
+      this.sound.turretTurn.play();
+      const timerId = setInterval(() => {
+      if (this.keyCodes.turret.length === 0) {
+        clearInterval(timerId);
+        this.sound.turretTurn.stop();
+        return;
+      }
+      this.keyCodes.turret.forEach((keyCode) => {
+            this.handleKey(keyCode);
       });
     }, this.animTimeStep);
   }
@@ -147,8 +286,10 @@ export default class TankMaker {
   handleKey(keyCode) {
     switch (keyCode) {
       case 'KeyW':
-        const bullet = new BulletMaker(this.bulletWidth, this.field, this.endOfBarrel.left,
-          this.endOfBarrel.top, this.tankGun.direction
+        const bullet = new Bullet(this.bulletWidth, this.world, this.field, 
+          this.endOfBarrel.left - this.world.hidden.left,
+          this.endOfBarrel.top - this.world.hidden.top,
+           this.tankGun.direction 
            + this.direction - Math.PI / 2, this.currentSpeed);
         break;
       case 'KeyA':
@@ -160,69 +301,68 @@ export default class TankMaker {
           - this.gunRotateStep;
         break;
       case 'ArrowLeft':
-        this.directionSetter = Math.max(0, Math.min(this.direction + this.animTimeStep
-              * this.currentSpeed.radial / 1000, Math.PI));
+        this.arrowHandlers.ArrowLeft.call(this);
         break;
       case 'ArrowRight':
-        this.directionSetter = Math.max(0, Math.min(this.direction - this.animTimeStep
-              * this.currentSpeed.radial / 1000, Math.PI));
+        this.arrowHandlers.ArrowRight.call(this);
         break;
       case 'ArrowUp':
-        this.topSetter = Math.max(0,
-          this.top + this.currentSpeed.toBottom * this.animTimeStep / 1000);
-        this.leftSetter = Math.max(0,
-          this.left + this.currentSpeed.toRight * this.animTimeStep / 1000);
+        this.arrowHandlers.ArrowUp.call(this);
         break;
       case 'ArrowDown':
-        this.topSetter = this.top + this.currentSpeed.toBottom
-            * this.animTimeStep / 1000;
-        this.leftSetter = this.left + this.currentSpeed.toRight
-            * this.animTimeStep / 1000;
+        this.arrowHandlers.ArrowDown.call(this);
         break;
         default: ;
     }
   }
 
-  makeFight() {
-    const timerId = setInterval(() => {
-      if (this.keyCodes.fight.length === 0) {
-        clearInterval(timerId);
-        return;
-      }
-
-      this.keyCodes.fight.forEach((keyCode) => {
-            	this.handleKey(keyCode);
-      });
-    }, 1000 / this.fireRate);
-  }
-
   addManipulation() {
     	window.onkeyup = (e) => {
-      if (e.code === 'ArrowUp' || e.code === 'ArrowDown') 
-        this.moveSoundSetter = 'stop';
-      if (e.code === 'KeyA' || e.code === 'KeyD') 
-        this.turretSoundSetter = 'stop';
-    		delFromArray(this.keyCodes.move, e.code);
-    		delFromArray(this.keyCodes.fight, e.code);
+      if (this.isMoveKeyCode(e.code))
+          delFromArray(this.keyCodes.move, e.code);
+      if (this.isTurnKeyCode(e.code))
+          delFromArray(this.keyCodes.turn, e.code);
+      if (isTurretKeyCode(e.code))
+          delFromArray(this.keyCodes.turret, e.code);
+      if (isFightKeyCode(e.code))
+          delFromArray(this.keyCodes.fight, e.code); 
     	};
     window.onkeydown = (e) => {
-      if (isMoveKeyCode(e.code)) {
-          console.log(e.code)
-        	if (e.code === 'ArrowUp' || e.code === 'ArrowDown') 
-            this.moveSoundSetter = 'play';
-           	if (this.keyCodes.move.length === 0) {
-	        		this.moveTank();
-	        	}
-	        	addUniqToArray(this.keyCodes.move, e.code);
-	        }
-           if (e.code === 'KeyA' || e.code === 'KeyD') 
-            this.turretSoundSetter = 'play';
-	        if (isFightKeyCode(e.code)) {
-	        	if (this.keyCodes.fight.length === 0) {
-	        		this.makeFight();
-	        	}
-	        	addUniqToArray(this.keyCodes.fight, e.code);
+      if (this.isMoveKeyCode(e.code)) {
+        if(this.keyCodes.move.length === 0)
+        {
+          addUniqToArray(this.keyCodes.move, e.code);
+          this.move();
+        }
+        else
+        addUniqToArray(this.keyCodes.move, e.code);
+	    }
+      if (this.isTurnKeyCode(e.code)) {
+        if(this.keyCodes.turn.length === 0)
+        {
+          addUniqToArray(this.keyCodes.turn, e.code);
+          this.turn();
+        }
+        addUniqToArray(this.keyCodes.turn, e.code);
       }
-    };
+       if (isTurretKeyCode(e.code)) {
+        if(this.keyCodes.turret.length === 0)
+        {
+        addUniqToArray(this.keyCodes.turret, e.code);
+        this.turretTurn();
+        }
+        else
+        addUniqToArray(this.keyCodes.turret, e.code);
+      }
+      if (isFightKeyCode(e.code)) {
+
+       if(this.keyCodes.fight.length === 0)
+        {
+           addUniqToArray(this.keyCodes.fight, e.code);
+           this.fight();
+        }
+        addUniqToArray(this.keyCodes.fight, e.code);      
+      }
   }
+}
 }

@@ -1,4 +1,4 @@
-export default class SoundMaker {
+export default class Sound {
   constructor(src, repeat) {
     this.sound = document.createElement('audio');
     this.sound.src = src;
@@ -17,7 +17,9 @@ export default class SoundMaker {
   set volumeSetter(value) {
     this.sound.volume = value;
   }
-
+  deleteFromDom() {
+    document.body.removeChild(this.sound);
+  }
   play() {
     this.sound.play();
   }
