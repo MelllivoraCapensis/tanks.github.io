@@ -19,7 +19,7 @@ export default class Target {
       //initial methods
       this.createDom();
       this.markCells();
-      this.startMoving();
+      //this.startMoving();
 	} 
   set leftSetter (value) {
       this.deMarkCells();

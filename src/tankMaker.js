@@ -42,7 +42,7 @@ export default class Tank {
     this.animTimeStep = 10;
     this.fireRate = 5;
     this.speed = {
-      linear: 200,
+      linear: 100,
       radial: 1,
     };
     this.world = world;
@@ -54,8 +54,8 @@ export default class Tank {
       height: 100,
     };
     this.minDistToEdge = {
-      horizontal: 400,
-      vertical: 400
+      horizontal: 100,
+      vertical: 100
     }
     
     //state
@@ -72,6 +72,7 @@ export default class Tank {
     //initial methods
     this.createDom();
 	  this.addManipulation();
+    this.world.addChildSetter = this;
     this.tankGun = new TankGun(this, Math.PI / 2);
   }
 
@@ -91,17 +92,22 @@ export default class Tank {
   }
 
   get arrowHandlers() {
-
       let object =  {
-          ArrowUp: () => {
+      ArrowUp: () => {
         this.topSetter = this.top + this.currentSpeed.toBottom 
            * this.animTimeStep / 1000;
         this.leftSetter = this.left + this.currentSpeed.toRight 
           * this.animTimeStep / 1000;
        },
-        ArrowLeft: () => {
-        this.directionSetter =this.direction + this.animTimeStep
+      ArrowLeft: () => {
+        this.directionSetter = this.direction + this.animTimeStep
               * this.currentSpeed.radial / 1000;
+        this.world.rotateSetter = {
+          left: this.left,
+          top: this.top,
+          angle: - this.animTimeStep
+          * this.currentSpeed.radial / 1000
+        }
        },   
 
       ArrowDown: () => {
@@ -113,6 +119,12 @@ export default class Tank {
       ArrowRight: () => {
         this.directionSetter = this.direction - this.animTimeStep
               * this.currentSpeed.radial / 1000;
+          this.world.rotateSetter = {
+          left: this.left,
+          top: this.top,
+          angle: this.animTimeStep
+          * this.currentSpeed.radial / 1000
+        }
        }
     
     }
@@ -128,8 +140,8 @@ export default class Tank {
     const angle = this.tankGun.direction + this.direction - Math.PI / 2;
     const left = this.left + (radius) * Math.cos(angle)
      - this.tankGun.barrel.size.width / 2;
-    const top = this.top - (radius)
-     * Math.sin(angle) - this.tankGun.barrel.size.width / 2;
+    const top = this.top - (radius) * Math.sin(angle) 
+     - this.tankGun.barrel.size.width / 2;
     return {
       left,
       top,
@@ -137,8 +149,8 @@ export default class Tank {
   }
 
   get currentSpeed() {
-    const up = this.keyCodes.move.indexOf(Object.keys(this.arrowHandlers)[0]) >= 0;
-    const down = this.keyCodes.move.indexOf(Object.keys(this.arrowHandlers)[2]) >= 0;
+    const up = this.keyCodes.move.indexOf("ArrowUp") >= 0;
+    const down = this.keyCodes.move.indexOf("ArrowDown") >= 0;
     const linear = up - down;
     return {
         	toRight: linear * this.speed.linear * Math.cos(this.direction),
@@ -158,24 +170,35 @@ export default class Tank {
 
   set leftSetter(value) {
     this.left = Math.max(this.size.height / 2, Math.min(this.world.size.width - 
-      this.size.height / 2,value));
-    this.placeDom();
+      this.size.height / 2, value));
     this.moveWorld();
+    this.placeDom();
   }
 
   set topSetter(value) {
     this.top = Math.max(this.size.height / 2, Math.min(this.world.size.height -
       this.size.height / 2, value));
-    this.placeDom();
     this.moveWorld();
+    this.placeDom();
+    
   }
   
+  get topInField () {
+    return (this.left + this.world.left) * Math.sin(- this.world.direction) +
+      (this.top + this.world.top) * Math.cos(- this.world.direction);
+  }
+
+  get leftInField () {
+     return (this.left + this.world.left) * Math.cos(- this.world.direction) -
+      (this.top + this.world.top) * Math.sin(- this.world.direction);
+  }
+
   get distToEdge () {
     return {
-      left: this.left - this.world.hidden.left,
-      top: this.top - this.world.hidden.top,
-      right: this.world.hidden.left + this.field.dom.clientWidth - this.left,
-      bottom: this.world.hidden.top + this.field.dom.clientHeight - this.top
+      left: this.leftInField,
+      top: this.topInField,
+      right: this.field.size.width - this.leftInField,
+      bottom: this.field.size.height - this.topInField
     }
   }
   isMoveKeyCode(keyCode) {
@@ -189,19 +212,19 @@ export default class Tank {
    moveWorld() {
       if(this.distToEdge.left <= this.minDistToEdge.horizontal && 
         this.currentSpeed.toRight < 0)
-      this.world.hiddenLeftSetter = this.world.hidden.left + 
+      this.world.leftSetter = this.world.left - 
         this.currentSpeed.toRight * this.animTimeStep / 1000;
       if(this.distToEdge.right <= this.minDistToEdge.horizontal && 
         this.currentSpeed.toRight > 0)
-      this.world.hiddenLeftSetter = this.world.hidden.left + 
+      this.world.leftSetter = this.world.left - 
         this.currentSpeed.toRight * this.animTimeStep / 1000;
       if(this.distToEdge.top <= this.minDistToEdge.vertical && 
         this.currentSpeed.toBottom < 0)
-      this.world.hiddenTopSetter = this.world.hidden.top + 
+      this.world.topSetter = this.world.top - 
         this.currentSpeed.toBottom * this.animTimeStep / 1000;
       if(this.distToEdge.bottom <= this.minDistToEdge.vertical && 
         this.currentSpeed.toBottom > 0)
-       this.world.hiddenTopSetter = this.world.hidden.top + 
+       this.world.topSetter = this.world.top - 
         this.currentSpeed.toBottom * this.animTimeStep / 1000;
   }
 
@@ -287,8 +310,8 @@ fight() {
     switch (keyCode) {
       case 'KeyW':
         const bullet = new Bullet(this.bulletWidth, this.world, this.field, 
-          this.endOfBarrel.left - this.world.hidden.left,
-          this.endOfBarrel.top - this.world.hidden.top,
+          this.endOfBarrel.left,
+          this.endOfBarrel.top,
            this.tankGun.direction 
            + this.direction - Math.PI / 2, this.currentSpeed);
         break;

@@ -6,11 +6,11 @@ export default class Field {
   }
   get size () {
     return {
-      width: this.dom.offsetWidth,
-      height: this.dom.offsetHeight
+      width: this.dom.clientWidth,
+      height: this.dom.clientHeight
     }
   }
-  createdom() {
+ createdom() {
   	this.dom = document.createElement('div');
     container.appendChild(this.dom);
     this.dom.classList.add('field');

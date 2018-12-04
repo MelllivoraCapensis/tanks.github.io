@@ -1,11 +1,18 @@
-
-#field {
+#container {
 	position: relative;
 	width: 80%;
 	height: 400px;
 	margin: 20px auto;
 	border: 2px solid black;
 	overflow: hidden;
+}
+.field {
+	height: 100%;
+}
+.world {
+	position: absolute;
+	background: url('/img/world.jpg');
+	background-size: ;
 }
 .tank {
 	position: absolute;
@@ -21,7 +28,7 @@
 .bullet {
 	position: absolute;
 	border-radius: 100%;
-	background: green;
+	background: black;
 }
 .tankTurret {
 	position: absolute;
@@ -38,4 +45,17 @@
 	position: absolute;
 	background: #435445;
 }
-
+.cell {
+	position: absolute;
+	border:1px solid black;
+	box-sizing: border-box;
+}
+.target {
+	position: absolute;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background: red;
+    font-size: 50px;
+    font-weight: bold;
+}

@@ -16,6 +16,8 @@ export default class Bullet {
     // state, initial value
     this.left = left;
     this.top = top;
+    this.leftInField = 0;
+    this.topInField = 0
 
     // initial methods
     this.sound = new Sound('./audio/bullet02_shot.wav');
@@ -23,16 +25,15 @@ export default class Bullet {
     this.sound.play();
 
     this.createDom();
+    this.world.addChildSetter = this;
     this.move();
   }
 
   get cell() {
-    let leftInWorld = this.world.hidden.left + this.left;
-    let topInWorld = this.world.hidden.top + this.top;
-    let i = Math.max(0, Math.min(this.world.sizeInCells.width - 1,
-      Math.floor(leftInWorld / this.world.cellSize.width)));
+   let i = Math.max(0, Math.min(this.world.sizeInCells.width - 1,
+      Math.floor(this.left / this.world.cellSize.width)));
     let j = Math.max(0, Math.min(this.world.sizeInCells.height - 1,
-      Math.floor(topInWorld / this.world.cellSize.height)));
+      Math.floor(this.top / this.world.cellSize.height)));
     return this.world.cells[i][j];
   }
 
@@ -44,12 +45,14 @@ export default class Bullet {
   }
 
   set leftSetter(value) {
-    this.left = Math.max(0, Math.min(this.field.size.width, value));
+    this.left = Math.max(0, Math.min(this.world.size.width, value));
+    this.leftInField = this.left - this.field.left;
     this.placeInDom();
   }
 
   set topSetter(value) {
-    this.top = Math.max(0, Math.min(this.field.size.height, value));
+    this.top = Math.max(0, Math.min(this.world.size.height, value));
+    this.topInField = this.top - this.field.top;
     this.placeInDom();
   }
 
@@ -74,12 +77,10 @@ export default class Bullet {
   }
 
   isEndOfPath() {
-    console.log((this.field.size.width + this.world.hidden.left)/
-      this.world.cellSize.width)
-    return this.left >= this.field.size.width
-      || this.left <= 0
-      || this.top >= this.field.size.height
-      || this.top <= 0
+    return this.leftInField >= this.field.size.width
+      || this.leftInField <= 0
+      || this.topInField >= this.field.size.height
+      || this.topInField <= 0
       || this.cell.object !== null;
   }
 
@@ -89,7 +90,7 @@ export default class Bullet {
     {
       this.cell.object.resourceSetter = this.cell.object.resource -1;
     }
-    this.field.dom.removeChild(this.dom);
+    this.world.dom.removeChild(this.dom);
     setTimeout(() => {
     this.sound.deleteFromDom();
   }, 1000)
@@ -105,7 +106,7 @@ export default class Bullet {
     this.dom.classList.add('bullet');
     this.dom.style.width = `${this.size.width}px`;
     this.dom.style.height = `${this.size.height}px`;
-    this.field.dom.appendChild(this.dom);
+    this.world.dom.appendChild(this.dom);
     this.placeInDom();
   }
 }

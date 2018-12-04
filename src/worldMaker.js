@@ -18,29 +18,56 @@ export default class World {
   	height: this.sizeInCells.height * this.cellSize.height
   }
   this.field = field;
+  this.startHiddenLeft = hiddenLeft;
+  this.startHiddenTop = hiddenTop;
 
   //state
   this.cells = [];
-  this.hidden = {
-  	left: hiddenLeft,
-  	top: hiddenTop
-  }
-  //initial methods
+  this.childs = [];
+  this.left = - hiddenLeft;
+  this.top = - hiddenTop;
+  this.direction = 0;
+  
+    //initial methods
+  this.field.leftSetter = this.startHiddenLeft;
+  this.field.topSetter = this.startHiddenTop;
   this.createDom();
   this.addCells();
   }
-  set hiddenLeftSetter(value) {
-  	this.hidden.left = Math.max(0, Math.min(this.size.width - this.field.size.width, value));
+  set addChildSetter (child) {
+  	this.childs.push(child);
+  }
+  set leftSetter(value) {
+  	this.left = value;
   	this.placeDom();
   }
-  set hiddenTopSetter(value) {
-  	this.hidden.top = Math.max(0, Math.min(this.size.height -this.field.size.height, value));
+  set topSetter(value) {
+  	this.top = value;
   	this.placeDom();
-
+  }
+  set rotateSetter(rotateParamObject) {
+  	let x = rotateParamObject.left;
+    let y = rotateParamObject.top;
+    let deltaAngle = rotateParamObject.angle;
+    let oldAngle = this.direction;
+    let newAngle = this.direction + deltaAngle;
+  	let radius = (x ** 2 + y ** 2) ** 0.5;
+  	if(radius === 0)
+  	var radiusAngle = 0;
+    else
+  	var radiusAngle = Math.acos(x / radius);
+  	this.direction = newAngle;
+  	this.left = this.left + radius * 
+  	  (Math.cos(radiusAngle - oldAngle) - Math.cos(radiusAngle - newAngle));
+  	this.top = this.top + radius * 
+  	  (Math.sin(radiusAngle - oldAngle) - Math.sin(radiusAngle - newAngle));
+  	this.placeDom();
   }
   placeDom() {
-  this.dom.style.left = - this.hidden.left + 'px';
-  this.dom.style.top = - this.hidden.top + 'px';
+  	console.log(this.left, this.top, this.direction);
+  this.dom.style.left = this.left + 'px';
+  this.dom.style.top = this.top + 'px';
+  this.dom.style.transform = 'rotate(' + (- this.direction * 180 / Math.PI) + 'deg)';
   }
   createDom() {
   	this.dom = document.createElement('div');
@@ -48,6 +75,7 @@ export default class World {
   	this.field.dom.appendChild(this.dom);
   	this.dom.style.width = this.size.width + 'px';
   	this.dom.style.height = this.size.height + 'px';
+  	this.dom.style.transformOrigin = '0 0';
     this.placeDom();
   }
   addCells() {
