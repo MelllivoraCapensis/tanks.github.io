@@ -19,7 +19,7 @@ export default class Target {
       //initial methods
       this.createDom();
       this.markCells();
-      //this.startMoving();
+      this.startMoving();
 	} 
   set leftSetter (value) {
       this.deMarkCells();
@@ -41,7 +41,7 @@ export default class Target {
     this.resource = value;
     this.dom.innerHTML = this.resource;
     if(this.resource === 0)
-      this.deleteFromDom();
+      this.delete();
   }
   get cells() {
     let leftMinCellInd = Math.max(0, Math.min(this.world.sizeInCells.width - 1, 
@@ -108,7 +108,7 @@ export default class Target {
         },this.moveDuration * 1000);
    }
 
-  deleteFromDom() {
+  delete() {
     this.deMarkCells();
     this.world.dom.removeChild(this.dom);
   }

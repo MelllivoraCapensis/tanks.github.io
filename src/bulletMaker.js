@@ -3,7 +3,7 @@ import Sound from './soundMaker';
 export default class Bullet {
   constructor(bulletWidth, world, field, left, top, absDirection, tankSpeed) {
     // params
-    this.relSpeed = 500;
+    this.relSpeed = 800;
     this.tankSpeed = tankSpeed;
     this.direction = absDirection;
     this.size = {
@@ -16,9 +16,7 @@ export default class Bullet {
     // state, initial value
     this.left = left;
     this.top = top;
-    this.leftInField = 0;
-    this.topInField = 0
-
+    
     // initial methods
     this.sound = new Sound('./audio/bullet02_shot.wav');
     this.sound.volumeSetter = 0.5;
@@ -37,22 +35,30 @@ export default class Bullet {
     return this.world.cells[i][j];
   }
 
-  get fullSpeed() {
+  get fullSpeed () {
     return {
       toRight: this.relSpeed * Math.cos(this.direction),
       toBottom: -this.relSpeed * Math.sin(this.direction),
     };
   }
+  
+  get topInField () {
+    return (this.top - this.field.topInWorld) * Math.cos(this.field.directionInWorld) +
+      (this.left - this.field.leftInWorld) * Math.sin(this.field.directionInWorld);
+  }
+
+  get leftInField () {
+     return (this.left - this.field.leftInWorld) * Math.cos(this.field.directionInWorld) -
+      (this.top - this.field.topInWorld) * Math.sin(this.field.directionInWorld);
+  }
 
   set leftSetter(value) {
     this.left = Math.max(0, Math.min(this.world.size.width, value));
-    this.leftInField = this.left - this.field.left;
     this.placeInDom();
   }
 
   set topSetter(value) {
     this.top = Math.max(0, Math.min(this.world.size.height, value));
-    this.topInField = this.top - this.field.top;
     this.placeInDom();
   }
 
@@ -77,11 +83,16 @@ export default class Bullet {
   }
 
   isEndOfPath() {
-    return this.leftInField >= this.field.size.width
+    console.log(this.cell)
+   return this.leftInField >= this.field.size.width
       || this.leftInField <= 0
       || this.topInField >= this.field.size.height
       || this.topInField <= 0
-      || this.cell.object !== null;
+      || this.cell.object !== null
+      || this.left <= 0
+      || this.top <= 0
+      || this.left >= this.world.size.width
+      || this.top >= this.world.size.height;
   }
 
   deleteFromDom() {

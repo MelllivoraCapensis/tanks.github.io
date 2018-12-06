@@ -18,9 +18,7 @@ export default class World {
   	height: this.sizeInCells.height * this.cellSize.height
   }
   this.field = field;
-  this.startHiddenLeft = hiddenLeft;
-  this.startHiddenTop = hiddenTop;
-
+  
   //state
   this.cells = [];
   this.childs = [];
@@ -29,8 +27,7 @@ export default class World {
   this.direction = 0;
   
     //initial methods
-  this.field.leftSetter = this.startHiddenLeft;
-  this.field.topSetter = this.startHiddenTop;
+  this.field.worldSetter = this;
   this.createDom();
   this.addCells();
   }
@@ -39,11 +36,15 @@ export default class World {
   }
   set leftSetter(value) {
   	this.left = value;
-  	this.placeDom();
+
+   	this.placeDom();
   }
   set topSetter(value) {
   	this.top = value;
-  	this.placeDom();
+   	this.placeDom();
+  }
+  set directionSetter (value) {
+    this.direction = value % (2 * Math.PI);
   }
   set rotateSetter(rotateParamObject) {
   	let x = rotateParamObject.left;
@@ -56,15 +57,14 @@ export default class World {
   	var radiusAngle = 0;
     else
   	var radiusAngle = Math.acos(x / radius);
-  	this.direction = newAngle;
-  	this.left = this.left + radius * 
+  	this.directionSetter = newAngle;
+  	this.leftSetter = this.left + radius * 
   	  (Math.cos(radiusAngle - oldAngle) - Math.cos(radiusAngle - newAngle));
-  	this.top = this.top + radius * 
+  	this.topSetter = this.top + radius * 
   	  (Math.sin(radiusAngle - oldAngle) - Math.sin(radiusAngle - newAngle));
-  	this.placeDom();
+    this.placeDom();
   }
   placeDom() {
-  	console.log(this.left, this.top, this.direction);
   this.dom.style.left = this.left + 'px';
   this.dom.style.top = this.top + 'px';
   this.dom.style.transform = 'rotate(' + (- this.direction * 180 / Math.PI) + 'deg)';

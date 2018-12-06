@@ -42,7 +42,7 @@ export default class Tank {
     this.animTimeStep = 10;
     this.fireRate = 5;
     this.speed = {
-      linear: 100,
+      linear: 200,
       radial: 1,
     };
     this.world = world;
@@ -53,11 +53,7 @@ export default class Tank {
       width: 70,
       height: 100,
     };
-    this.minDistToEdge = {
-      horizontal: 100,
-      vertical: 100
-    }
-    
+       
     //state
     this.left = leftInWorld;
     this.top = topInWorld;
@@ -68,12 +64,32 @@ export default class Tank {
       turret: []
     };
     this.direction = Math.PI / 2;
+    this.resource = 100;
     
     //initial methods
     this.createDom();
 	  this.addManipulation();
     this.world.addChildSetter = this;
+    this.field.tankResourceSetter = this.resource;
     this.tankGun = new TankGun(this, Math.PI / 2);
+  }
+ 
+  get minDistToEdge () {
+      return {
+      horizontal: window.innerWidth * 0.5,
+      top: window.innerHeight * 0.8,
+      bottom: window.innerHeight * 0.1
+    }
+  }
+
+  set resourceSetter (value) {
+    this.resource = Math.max(0, value);
+    this.field.tankResourceSetter = value.toFixed(0);
+    if(this.resource <= 0)
+    {
+      this.delManipulation();
+      this.field.endGame();
+    }
   }
 
   set moveSoundSetter(value) {
@@ -87,8 +103,12 @@ export default class Tank {
   }
 
   set directionSetter(value) {
-    this.direction = value % (2 * Math.PI);
+    this.direction = (2 * Math.PI + value) % (2 * Math.PI);
     this.placeDom();
+  }
+  get directionInField() {
+    return (2 * Math.PI + this.direction - 
+      this.field.directionInWorld) % (2 * Math.PI);
   }
 
   get arrowHandlers() {
@@ -102,6 +122,8 @@ export default class Tank {
       ArrowLeft: () => {
         this.directionSetter = this.direction + this.animTimeStep
               * this.currentSpeed.radial / 1000;
+        console.log(this.directionInField)
+        if(this.directionInField < Math.PI / 4 || this.directionInField > 3 * Math.PI / 4)
         this.world.rotateSetter = {
           left: this.left,
           top: this.top,
@@ -119,7 +141,8 @@ export default class Tank {
       ArrowRight: () => {
         this.directionSetter = this.direction - this.animTimeStep
               * this.currentSpeed.radial / 1000;
-          this.world.rotateSetter = {
+        if(this.directionInField < Math.PI / 4 || this.directionInField > 3 * Math.PI / 4)
+        this.world.rotateSetter = {
           left: this.left,
           top: this.top,
           angle: this.animTimeStep
@@ -153,6 +176,7 @@ export default class Tank {
     const down = this.keyCodes.move.indexOf("ArrowDown") >= 0;
     const linear = up - down;
     return {
+          sign: linear,
         	toRight: linear * this.speed.linear * Math.cos(this.direction),
         	toBottom: -linear * this.speed.linear * Math.sin(this.direction),
       radial: this.speed.radial * linear,
@@ -172,6 +196,13 @@ export default class Tank {
     this.left = Math.max(this.size.height / 2, Math.min(this.world.size.width - 
       this.size.height / 2, value));
     this.moveWorld();
+           /*'tanklf - ' + this.leftInField.toFixed(0) + 
+        '  tanktf - ' + this.topInField.toFixed(0) + 
+        '  fieldlw - ' + this.field.leftInWorld.toFixed(0) +
+        '  fieldtw - ' + this.field.topInWorld.toFixed(0) + 
+        '  fieldtw - ' + this.field.directionInWorld.toFixed(2) + 
+        '  worldl - ' + this.world.left.toFixed(0) + 
+        '  worldt - ' + this.world.top.toFixed(0);*/
     this.placeDom();
   }
 
@@ -180,17 +211,16 @@ export default class Tank {
       this.size.height / 2, value));
     this.moveWorld();
     this.placeDom();
-    
   }
   
   get topInField () {
-    return (this.left + this.world.left) * Math.sin(- this.world.direction) +
-      (this.top + this.world.top) * Math.cos(- this.world.direction);
+    return (this.top - this.field.topInWorld) * Math.cos(this.field.directionInWorld) +
+      (this.left - this.field.leftInWorld) * Math.sin(this.field.directionInWorld);
   }
 
   get leftInField () {
-     return (this.left + this.world.left) * Math.cos(- this.world.direction) -
-      (this.top + this.world.top) * Math.sin(- this.world.direction);
+     return (this.left - this.field.leftInWorld) * Math.cos(this.field.directionInWorld) -
+      (this.top - this.field.topInWorld) * Math.sin(this.field.directionInWorld);
   }
 
   get distToEdge () {
@@ -210,22 +240,27 @@ export default class Tank {
      keyCode === Object.keys(this.arrowHandlers)[3];
    }
    moveWorld() {
-      if(this.distToEdge.left <= this.minDistToEdge.horizontal && 
-        this.currentSpeed.toRight < 0)
-      this.world.leftSetter = this.world.left - 
-        this.currentSpeed.toRight * this.animTimeStep / 1000;
-      if(this.distToEdge.right <= this.minDistToEdge.horizontal && 
-        this.currentSpeed.toRight > 0)
-      this.world.leftSetter = this.world.left - 
-        this.currentSpeed.toRight * this.animTimeStep / 1000;
-      if(this.distToEdge.top <= this.minDistToEdge.vertical && 
-        this.currentSpeed.toBottom < 0)
-      this.world.topSetter = this.world.top - 
-        this.currentSpeed.toBottom * this.animTimeStep / 1000;
-      if(this.distToEdge.bottom <= this.minDistToEdge.vertical && 
-        this.currentSpeed.toBottom > 0)
-       this.world.topSetter = this.world.top - 
-        this.currentSpeed.toBottom * this.animTimeStep / 1000;
+     if(this.distToEdge.top <= this.minDistToEdge.top)
+       {
+        this.world.topSetter = this.world.top + this.minDistToEdge.top - 
+        this.distToEdge.top;
+       }
+     if(this.distToEdge.bottom <= this.minDistToEdge.bottom)
+       {
+        this.world.topSetter = this.world.top - this.minDistToEdge.bottom +
+        this.distToEdge.bottom;
+       }
+     if(this.distToEdge.left <= this.minDistToEdge.horizontal)
+     {
+      this.world.leftSetter = this.world.left + this.minDistToEdge.horizontal -
+        this.distToEdge.left;
+     }
+     if(this.distToEdge.right <= this.minDistToEdge.horizontal)
+     {
+      this.world.leftSetter = this.world.left - this.minDistToEdge.horizontal +
+        this.distToEdge.right;
+     }
+
   }
 
   placeDom() {
@@ -338,6 +373,10 @@ fight() {
         default: ;
     }
   }
+  
+  delManipulation() {
+    window.onkeydown = null;
+    }
 
   addManipulation() {
     	window.onkeyup = (e) => {
